@@ -1,0 +1,16 @@
+# Ignore all PNG files in frames directory
+frames/*.png
+
+# Ignore processed outputs
+processed/
+processed-4k/
+processed-4k-vertical/
+processed-4k-horizontal/
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*~
+
