@@ -10,9 +10,7 @@
 
 # Configuration
 FRAMES_DIR ?= frames
-OUTPUT_DIR ?= processed
-OUTPUT_DIR_V ?= processed-4k-vertical
-OUTPUT_DIR_H ?= processed-4k-horizontal
+OUTPUT_DIR ?= renders
 FPS ?= 16
 SCRIPT = ./process_frames.sh
 
@@ -43,12 +41,12 @@ all: check
 # 4K Vertical (2160x3840) - for phones, portrait displays
 4k-vertical: check
 	@chmod +x $(SCRIPT)
-	@$(SCRIPT) "$(FRAMES_DIR)" "$(OUTPUT_DIR_V)" "4k-vertical"
+	@$(SCRIPT) "$(FRAMES_DIR)" "$(OUTPUT_DIR)" "4k-vertical"
 
 # 4K Horizontal (3840x2160) - for TVs, landscape displays
 4k-horizontal: check
 	@chmod +x $(SCRIPT)
-	@$(SCRIPT) "$(FRAMES_DIR)" "$(OUTPUT_DIR_H)" "4k-horizontal"
+	@$(SCRIPT) "$(FRAMES_DIR)" "$(OUTPUT_DIR)" "4k-horizontal"
 
 # Check dependencies
 check:
@@ -83,8 +81,8 @@ info:
 
 # Clean all outputs
 clean:
-	@rm -rf $(OUTPUT_DIR) $(OUTPUT_DIR_V) $(OUTPUT_DIR_H) processed-4k
-	@echo "✓ Cleaned all processed files"
+	@rm -rf $(OUTPUT_DIR)
+	@echo "✓ Cleaned renders directory"
 
 # Help (same as default)
 help: default

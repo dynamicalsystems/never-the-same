@@ -18,9 +18,21 @@ INPUT_PATTERN="*.png"
 FPS=16
 GIF_FPS=17  # Slightly faster for GIF to compensate for timing quantization
 
-# Output filenames
-VIDEO_OUTPUT="wind_animation.mp4"
-GIF_OUTPUT="wind_animation.gif"
+# Output filenames (namespaced by mode)
+case "$MODE" in
+    "4k-vertical")
+        VIDEO_OUTPUT="wind_animation_4k-vertical.mp4"
+        GIF_OUTPUT="wind_animation_4k-vertical.gif"
+        ;;
+    "4k-horizontal")
+        VIDEO_OUTPUT="wind_animation_4k-horizontal.mp4"
+        GIF_OUTPUT="wind_animation_4k-horizontal.gif"
+        ;;
+    *)
+        VIDEO_OUTPUT="wind_animation.mp4"
+        GIF_OUTPUT="wind_animation.gif"
+        ;;
+esac
 PALETTE="palette.png"
 
 # Colors for output

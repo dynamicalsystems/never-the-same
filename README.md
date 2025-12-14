@@ -7,7 +7,7 @@ Artwork by [Nat Sarkissian](https://verse.works/series/never-the-same-by-nat-sar
 
 ### 0. Clone this repository
 
-### 1. Install prerequisitesa
+### 1. Install prerequisites
 ```bash
 brew install ffmpeg
 ```
@@ -38,11 +38,15 @@ make all
 
 ## Output
 
-Each render creates:
-- `wind_animation.mp4` — H.264 video (best quality, 16fps)
-- `wind_animation.gif` — Looping GIF (17fps, optimized for web)
+All renders are saved to the `renders/` directory with namespaced filenames:
 
-Outputs are saved to `processed/`, `processed-4k-vertical/`, or `processed-4k-horizontal/`.
+- `wind_animation.mp4` / `wind_animation.gif` — Native resolution
+- `wind_animation_4k-vertical.mp4` / `wind_animation_4k-vertical.gif` — 4K vertical
+- `wind_animation_4k-horizontal.mp4` / `wind_animation_4k-horizontal.gif` — 4K horizontal
+
+Each render creates:
+- **MP4** — H.264 video (best quality, 16fps)
+- **GIF** — Looping GIF (17fps, optimized for web)
 
 ## Other Commands
 
