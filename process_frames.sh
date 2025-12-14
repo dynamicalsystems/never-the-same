@@ -16,7 +16,6 @@ OUTPUT_DIR="${2:-processed}"
 MODE="${3:-native}"
 INPUT_PATTERN="*.png"
 FPS=16
-GIF_FPS=17  # Slightly faster for GIF to compensate for timing quantization
 
 # Output filenames (namespaced by mode)
 case "$MODE" in
@@ -27,6 +26,10 @@ case "$MODE" in
     "4k-horizontal")
         VIDEO_OUTPUT="wind_animation_4k-horizontal.mp4"
         GIF_OUTPUT="wind_animation_4k-horizontal.gif"
+        ;;
+    "gif-small")
+        VIDEO_OUTPUT=""  # No video for small GIF mode
+        GIF_OUTPUT="wind_animation_small.gif"
         ;;
     *)
         VIDEO_OUTPUT="wind_animation.mp4"
@@ -103,6 +106,13 @@ case "$MODE" in
         VIDEO_FILTER="scale=3840:3840:flags=lanczos,crop=${FINAL_W}:${FINAL_H}:(in_w-${FINAL_W})/2:(in_h-${FINAL_H})/2"
         echo "4K Horizontal: Scale to 3840x3840, crop to ${FINAL_W}x${FINAL_H}"
         ;;
+    "gif-small")
+        # Small GIF: Scale down to ~800x800 for file size optimization
+        FINAL_W=800
+        FINAL_H=800
+        VIDEO_FILTER="scale=${FINAL_W}:${FINAL_H}:flags=lanczos"
+        echo "Small GIF: Scale to ${FINAL_W}x${FINAL_H} for file size optimization"
+        ;;
     *)
         # Native: No scaling or cropping, preserve original
         FINAL_W=$ORIG_W
@@ -153,9 +163,10 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════
-# Create MP4 Video
+# Create MP4 Video (skip for gif-small mode)
 # ═══════════════════════════════════════════════════════════
-echo -e "${GREEN}Creating MP4 video...${NC}"
+if [ "$MODE" != "gif-small" ]; then
+    echo -e "${GREEN}Creating MP4 video...${NC}"
 
 if [ -n "$FFMPEG_PATTERN" ]; then
     if [ -n "$VIDEO_FILTER" ]; then
@@ -198,60 +209,114 @@ else
     rm "$FILELIST"
 fi
 
-echo -e "${GREEN}✓ Created: ${OUTPUT_DIR}/${VIDEO_OUTPUT}${NC}"
-echo ""
-
-# ═══════════════════════════════════════════════════════════
-# Create Looping GIF (two-pass for quality)
-# ═══════════════════════════════════════════════════════════
-echo -e "${GREEN}Creating looping GIF (two-pass for quality)...${NC}"
-
-# Pass 1: Generate optimized palette
-echo "  Pass 1: Generating color palette..."
-if [ -n "$FFMPEG_PATTERN" ]; then
-    ffmpeg -y -framerate $FPS -start_number $START_NUM -i "$FFMPEG_PATTERN" \
-        -vf "$VF_PALETTE" \
-        "$OUTPUT_DIR/$PALETTE" \
-        2>&1 | grep -E "(frame|fps)" || true
-else
-    FILELIST="$OUTPUT_DIR/filelist.txt"
-    > "$FILELIST"
-    for f in "${FRAMES[@]}"; do
-        echo "file '$(pwd)/$f'" >> "$FILELIST"
-        echo "duration $(echo "scale=6; 1/$FPS" | bc)" >> "$FILELIST"
-    done
-    
-    ffmpeg -y -f concat -safe 0 -i "$FILELIST" \
-        -vf "$VF_PALETTE" \
-        "$OUTPUT_DIR/$PALETTE" \
-        2>&1 | grep -E "(frame|fps)" || true
+    echo -e "${GREEN}✓ Created: ${OUTPUT_DIR}/${VIDEO_OUTPUT}${NC}"
+    echo ""
 fi
 
-# Pass 2: Create GIF using palette (use faster framerate for better timing)
-# GIF timing is quantized to centiseconds, so 17fps (58.8ms) maps better than 16fps (62.5ms)
-echo "  Pass 2: Creating GIF with palette..."
-if [ -n "$FFMPEG_PATTERN" ]; then
-    ffmpeg -y -framerate $FPS -start_number $START_NUM -i "$FFMPEG_PATTERN" \
+# ═══════════════════════════════════════════════════════════
+# Create Looping GIF
+# ═══════════════════════════════════════════════════════════
+if [ "$MODE" = "gif-small" ]; then
+    # Small GIF: Create directly from frames with aggressive optimization
+    echo -e "${GREEN}Creating optimized small GIF (target: <15MB)...${NC}"
+    
+    # Pass 1: Generate optimized palette with reduced colors
+    echo "  Pass 1: Generating optimized palette..."
+    if [ -n "$FFMPEG_PATTERN" ]; then
+        ffmpeg -y -framerate $FPS -start_number $START_NUM -i "$FFMPEG_PATTERN" \
+            -vf "${VIDEO_FILTER},palettegen=max_colors=128:stats_mode=full" \
+            "$OUTPUT_DIR/$PALETTE" \
+            2>&1 | grep -E "(frame|fps)" || true
+    else
+        FILELIST="$OUTPUT_DIR/filelist.txt"
+        > "$FILELIST"
+        for f in "${FRAMES[@]}"; do
+            echo "file '$(pwd)/$f'" >> "$FILELIST"
+            echo "duration $(echo "scale=6; 1/$FPS" | bc)" >> "$FILELIST"
+        done
+        
+        ffmpeg -y -f concat -safe 0 -i "$FILELIST" \
+            -vf "${VIDEO_FILTER},palettegen=max_colors=128:stats_mode=full" \
+            "$OUTPUT_DIR/$PALETTE" \
+            2>&1 | grep -E "(frame|fps)" || true
+    fi
+    
+    # Pass 2: Create GIF with aggressive optimization
+    echo "  Pass 2: Creating optimized GIF..."
+    if [ -n "$FFMPEG_PATTERN" ]; then
+        ffmpeg -y -framerate $FPS -start_number $START_NUM -i "$FFMPEG_PATTERN" \
+            -i "$OUTPUT_DIR/$PALETTE" \
+            -lavfi "${VIDEO_FILTER}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" \
+            -r 16 \
+            -loop 0 \
+            "$OUTPUT_DIR/$GIF_OUTPUT" \
+            2>&1 | grep -E "(frame|fps)" || true
+    else
+        ffmpeg -y -f concat -safe 0 -i "$FILELIST" \
+            -i "$OUTPUT_DIR/$PALETTE" \
+            -lavfi "${VIDEO_FILTER}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" \
+            -r 16 \
+            -loop 0 \
+            "$OUTPUT_DIR/$GIF_OUTPUT" \
+            2>&1 | grep -E "(frame|fps)" || true
+        
+        rm "$FILELIST"
+    fi
+    
+    # Check file size and reduce if needed
+    GIF_SIZE=$(stat -f%z "$OUTPUT_DIR/$GIF_OUTPUT" 2>/dev/null || stat -c%s "$OUTPUT_DIR/$GIF_OUTPUT" 2>/dev/null)
+    MAX_SIZE=$((15 * 1024 * 1024))  # 15MB in bytes
+    
+    if [ -n "$GIF_SIZE" ] && [ "$GIF_SIZE" -gt "$MAX_SIZE" ]; then
+        echo "  File size ($(echo "scale=1; $GIF_SIZE / 1024 / 1024" | bc)MB) exceeds 15MB, reducing resolution..."
+        # Try smaller resolution
+        FINAL_W=600
+        FINAL_H=600
+        VIDEO_FILTER="scale=${FINAL_W}:${FINAL_H}:flags=lanczos"
+        
+        if [ -n "$FFMPEG_PATTERN" ]; then
+            ffmpeg -y -framerate $FPS -start_number $START_NUM -i "$FFMPEG_PATTERN" \
+                -vf "${VIDEO_FILTER},palettegen=max_colors=128:stats_mode=full" \
+                "$OUTPUT_DIR/$PALETTE" \
+                2>&1 | grep -E "(frame|fps)" || true
+            
+            ffmpeg -y -framerate $FPS -start_number $START_NUM -i "$FFMPEG_PATTERN" \
+                -i "$OUTPUT_DIR/$PALETTE" \
+                -lavfi "${VIDEO_FILTER}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" \
+                -r 16 \
+                -loop 0 \
+                "$OUTPUT_DIR/$GIF_OUTPUT" \
+                2>&1 | grep -E "(frame|fps)" || true
+        fi
+    fi
+    
+    rm -f "$OUTPUT_DIR/$PALETTE"
+else
+    # Standard GIF: Create from MP4 (two-pass for quality)
+    echo -e "${GREEN}Creating looping GIF from MP4 (two-pass for quality)...${NC}"
+    
+    # Pass 1: Generate optimized palette from MP4
+    echo "  Pass 1: Generating color palette from MP4..."
+    ffmpeg -y -i "$OUTPUT_DIR/$VIDEO_OUTPUT" \
+        -vf "palettegen=stats_mode=full" \
+        "$OUTPUT_DIR/$PALETTE" \
+        2>&1 | grep -E "(frame|fps)" || true
+    
+    # Pass 2: Create GIF from MP4 using palette
+    # Using the MP4 ensures consistent frame timing
+    # Speed up by 2x: use setpts to compress timeline and double output framerate
+    echo "  Pass 2: Creating GIF from MP4 with palette (2x faster)..."
+    ffmpeg -y -i "$OUTPUT_DIR/$VIDEO_OUTPUT" \
         -i "$OUTPUT_DIR/$PALETTE" \
-        -lavfi "$VF_GIF" \
-        -r $GIF_FPS \
+        -lavfi "[0:v]setpts=0.5*PTS[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5" \
+        -r 32 \
         -loop 0 \
         "$OUTPUT_DIR/$GIF_OUTPUT" \
         2>&1 | grep -E "(frame|fps)" || true
-else
-    ffmpeg -y -f concat -safe 0 -i "$FILELIST" \
-        -i "$OUTPUT_DIR/$PALETTE" \
-        -lavfi "$VF_GIF" \
-        -r $GIF_FPS \
-        -loop 0 \
-        "$OUTPUT_DIR/$GIF_OUTPUT" \
-        2>&1 | grep -E "(frame|fps)" || true
     
-    rm "$FILELIST"
+    # Clean up palette
+    rm -f "$OUTPUT_DIR/$PALETTE"
 fi
-
-# Clean up palette
-rm -f "$OUTPUT_DIR/$PALETTE"
 
 echo -e "${GREEN}✓ Created: ${OUTPUT_DIR}/${GIF_OUTPUT}${NC}"
 echo ""
@@ -264,7 +329,12 @@ echo -e "${GREEN}  Processing Complete!${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
 echo ""
 echo "Output files:"
-ls -lh "$OUTPUT_DIR/$VIDEO_OUTPUT" "$OUTPUT_DIR/$GIF_OUTPUT" 2>/dev/null | awk '{print "  " $9 " (" $5 ")"}'
+if [ -n "$VIDEO_OUTPUT" ] && [ -f "$OUTPUT_DIR/$VIDEO_OUTPUT" ]; then
+    ls -lh "$OUTPUT_DIR/$VIDEO_OUTPUT" 2>/dev/null | awk '{print "  " $9 " (" $5 ")"}'
+fi
+if [ -f "$OUTPUT_DIR/$GIF_OUTPUT" ]; then
+    ls -lh "$OUTPUT_DIR/$GIF_OUTPUT" 2>/dev/null | awk '{print "  " $9 " (" $5 ")"}'
+fi
 echo ""
 echo "Duration: $(echo "scale=2; $FRAME_COUNT / $FPS" | bc) seconds @ ${FPS}fps"
 echo ""

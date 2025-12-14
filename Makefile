@@ -18,7 +18,7 @@ SCRIPT = ./process_frames.sh
 # Set default target
 .DEFAULT_GOAL := default
 
-.PHONY: all native 4k-vertical 4k-horizontal clean check info help default
+.PHONY: all native 4k-vertical 4k-horizontal gif-small clean check info help default
 
 # Default target: Show available targets
 default:
@@ -30,6 +30,7 @@ default:
 	@echo "  make native        Render native resolution only (square)"
 	@echo "  make 4k-vertical   Render 4K vertical (2160×3840)"
 	@echo "  make 4k-horizontal  Render 4K horizontal (3840×2160)"
+	@echo "  make gif-small     Render optimized small GIF (<15MB)"
 	@echo ""
 	@echo "  make info           Show frame information"
 	@echo "  make clean          Remove all outputs"
@@ -54,6 +55,11 @@ native: check
 4k-horizontal: check
 	@chmod +x $(SCRIPT)
 	@$(SCRIPT) "$(FRAMES_DIR)" "$(OUTPUT_DIR)" "4k-horizontal"
+
+# Small GIF (<15MB) - optimized for web sharing
+gif-small: check
+	@chmod +x $(SCRIPT)
+	@$(SCRIPT) "$(FRAMES_DIR)" "$(OUTPUT_DIR)" "gif-small"
 
 # Check dependencies
 check:
