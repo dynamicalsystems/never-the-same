@@ -1,4 +1,4 @@
-# Never the Same #61
+# Never the Same
 **Wind Animation Renderer**
 
 Artwork by [Nat Sarkissian](https://verse.works/series/never-the-same-by-nat-sarkissian)
