@@ -3,6 +3,8 @@
 
 Artwork by [Nat Sarkissian](https://verse.works/series/never-the-same-by-nat-sarkissian)
 
+![Wind Animation](assets/wind_animation_small.gif)
+
 Processes animation frames from "Never the Same" into high-quality video and GIF formats optimized for different use cases.
 
 ## Quick Start
