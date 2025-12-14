@@ -24,7 +24,7 @@ Move the downloaded PNG files to the `frames/` directory in this project.
 # Show all available targets
 make
 
-# Render native resolution (square)
+# Render all versions (native, 4k-vertical, 4k-horizontal)
 make all
 ```
 
@@ -32,7 +32,8 @@ make all
 
 | Command | Resolution | Use Case |
 |---------|------------|----------|
-| `make all` | Native (square) | Original artwork |
+| `make all` | All versions | Creates native, 4k-vertical, and 4k-horizontal |
+| `make native` | Native (square) | Original artwork |
 | `make 4k-vertical` | 2160×3840 | Phone, portrait displays |
 | `make 4k-horizontal` | 3840×2160 | TV, landscape displays |
 

@@ -2,7 +2,8 @@
 # Assembles frames into video/GIF at 16fps
 #
 # Usage:
-#   make all           - Create animation (native resolution)
+#   make all           - Create all versions (native, 4k-vertical, 4k-horizontal)
+#   make native        - Create native resolution only
 #   make 4k-vertical   - Create 4K vertical (2160x3840) for phone/portrait screens
 #   make 4k-horizontal - Create 4K horizontal (3840x2160) for TV/landscape screens
 #   make clean         - Remove processed files
@@ -17,7 +18,7 @@ SCRIPT = ./process_frames.sh
 # Set default target
 .DEFAULT_GOAL := default
 
-.PHONY: all 4k-vertical 4k-horizontal clean check info help default
+.PHONY: all native 4k-vertical 4k-horizontal clean check info help default
 
 # Default target: Show available targets
 default:
@@ -25,7 +26,8 @@ default:
 	@echo "  Never the Same - Wind Animation Processor"
 	@echo "  ─────────────────────────────────────────"
 	@echo ""
-	@echo "  make all           Render native resolution (square)"
+	@echo "  make all           Render all versions (native, 4k-vertical, 4k-horizontal)"
+	@echo "  make native        Render native resolution only (square)"
 	@echo "  make 4k-vertical   Render 4K vertical (2160×3840)"
 	@echo "  make 4k-horizontal  Render 4K horizontal (3840×2160)"
 	@echo ""
@@ -33,8 +35,13 @@ default:
 	@echo "  make clean          Remove all outputs"
 	@echo ""
 
+# Build all versions
+all: check native 4k-vertical 4k-horizontal
+	@echo ""
+	@echo "✓ All renders complete!"
+
 # Native resolution (no crop)
-all: check
+native: check
 	@chmod +x $(SCRIPT)
 	@$(SCRIPT) "$(FRAMES_DIR)" "$(OUTPUT_DIR)" "native"
 
